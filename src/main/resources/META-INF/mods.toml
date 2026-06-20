@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="MIT"
+
+[[mods]]
+    modId="krikcraft"
+    version="1.0.0"
+    displayName="KrikCraft Scanner"
+    description='''
+    Сканер блоков и мобов для серверов KrikCraft.
+    Автопилот змейкой, Discord webhook, выбор анархии через Ctrl+G.
+    '''
+
+[[dependencies.krikcraft]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.krikcraft]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="CLIENT"
