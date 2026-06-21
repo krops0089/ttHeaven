@@ -145,26 +145,37 @@ public class Scanner {
         }
     }
 
-    /** Полный перебор всех Y в чанке для поиска спавнеров */
+    /** Сканируем чанк через ChunkSection — работает на любой высоте включая Y<20.
+     *  Не вызывает world.getBlockState (тот пропускает низкие Y на клиенте).
+     *  Пустые секции пропускаются мгновенно. */
     private static void scanChunkForSpawners(Chunk chunk) {
         int cx = chunk.getPos().x;
         int cz = chunk.getPos().z;
-        // Сначала быстро через TileEntityMap
+
+        // Шаг 1: TileEntityMap (быстро, но неполный на низких Y)
         for (Map.Entry<BlockPos, TileEntity> e : chunk.getTileEntityMap().entrySet()) {
             if (e.getValue() instanceof MobSpawnerTileEntity) {
                 handleSpawner(e.getKey(), "TEMap");
             }
         }
-        // Затем полный перебор блоков (ловит случаи когда TE не в Map)
-        for (int bx = 0; bx < 16; bx++) {
-            for (int y = 0; y <= 255; y++) {
-                for (int bz = 0; bz < 16; bz++) {
-                    BlockPos pos = new BlockPos(cx * 16 + bx, y, cz * 16 + bz);
-                    if (spawnerCache.containsKey(pos)) continue;
-                    Minecraft mc = Minecraft.getInstance();
-                    if (mc.world == null) return;
-                    if (mc.world.getBlockState(pos).getBlock() == Blocks.SPAWNER) {
-                        handleSpawner(pos, "BlockScan");
+
+        // Шаг 2: читаем прямо из ChunkSection (16 секций по 16 блоков).
+        // Это единственный надёжный способ найти спавнеры на Y=5,10,15 и т.д.
+        net.minecraft.world.chunk.ChunkSection[] sections = chunk.getSections();
+        for (int secIdx = 0; secIdx < sections.length; secIdx++) {
+            net.minecraft.world.chunk.ChunkSection sec = sections[secIdx];
+            if (sec == null || sec.isEmpty()) continue; // пустая секция — пропуск
+
+            int baseY = secIdx << 4; // нижний Y секции = secIdx * 16
+
+            for (int bx = 0; bx < 16; bx++) {
+                for (int by = 0; by < 16; by++) {
+                    for (int bz = 0; bz < 16; bz++) {
+                        if (sec.getBlockState(bx, by, bz).getBlock() != Blocks.SPAWNER) continue;
+                        BlockPos pos = new BlockPos(cx * 16 + bx, baseY + by, cz * 16 + bz);
+                        if (!spawnerCache.containsKey(pos)) {
+                            handleSpawner(pos, "SectionScan");
+                        }
                     }
                 }
             }
